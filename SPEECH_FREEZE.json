@@ -1,0 +1,23 @@
+{
+  "baseline": "0.2.2 user-approved speech",
+  "files": {
+    "app/src/main/java/fi/guildgame/app/LocalVoice.java": "390af7fdf7f271d6c4c60bf09c1cabc034db6430019efacd95ce8e33326e99c2",
+    "app/src/main/java/fi/guildgame/app/LocalSpeech.java": "9340a465907392fafcc195a0967338a28b688b4ef93b03430c37cfbf234d2b81",
+    "app/src/main/java/fi/guildgame/app/CtcDecoder.java": "011a69afff4f1166f4adaf742b947f834283a451d61b2420222c2659ed0087ec",
+    "app/src/main/java/fi/guildgame/app/SpeechAudio.java": "db6697422d5003a89c2d4731b98ee789a99ea57d443db304d9fcc22b1f6c9497",
+    "web/js/app.js": "50931521d5937f124fdfb92af3321eeb422388b9a80cac4ebabd7bd340f02bde",
+    "app/src/main/assets/speech/asr-en.json": "567058f5d95e6a5967f8bd2aeadb6270cf2a3d208fb397ee784790de0502cd32",
+    "app/src/main/assets/speech/asr-en.onnx": "7903180fda58b41ff8a5b74ca635ae08849e83b078c9a34a22dcabc1acd6d4a1",
+    "app/src/main/assets/speech/asr-fi.json": "c21a8860431128fe634415d48d52844f1d1f3f07271047219e975d4925962686",
+    "app/src/main/assets/speech/asr-fi.onnx": "c860695b3c3cd2d8dc76246bae7079aaecfb98b987eefa30b73f1a9ca6eed84f",
+    "app/src/main/assets/speech/vad.onnx": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3"
+  },
+  "captureSha256": "e999e779897d7b4a1b11ab6ff50a39025b1cbace8032e8e3bf6124e50036f173",
+  "nativeLibraries": {
+    "lib/x86_64/libonnxruntime4j_jni.so": "b8d1b251b7d5606cf5caa7db9738353c08efc4090ac90ca2aaab449bc263a10b",
+    "lib/x86_64/libonnxruntime.so": "972c17c056eaae946a415d9efdd8018b729639974df075e495f0092441478fb7",
+    "lib/arm64-v8a/libonnxruntime4j_jni.so": "2cc3f16ab527959a81b572adebcfb71a25ea4b8547c9b92d705b423e9c822d39",
+    "lib/arm64-v8a/libonnxruntime.so": "e40f09d07dc53726b8bfbf48a7907673b8f86718a057655a62790a39874a7302"
+  },
+  "brandingNote": "1.0.1: shared app.js branding literals renamed; speech, matcher and all other executable code unchanged."
+}

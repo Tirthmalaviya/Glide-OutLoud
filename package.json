@@ -1,0 +1,11 @@
+{
+  "name": "glide-game-validation",
+  "version": "1.0.1",
+  "private": true,
+  "description": "Optional developer checks; the Android app does not require Node.js.",
+  "scripts": {
+    "test": "node tests/check.cjs && node tests/practice.cjs",
+    "test:ui": "node tests/ui.cjs"
+  },
+  "devDependencies": { "playwright": "1.62.1" }
+}

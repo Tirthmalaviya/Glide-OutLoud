@@ -1,0 +1,27 @@
+[
+  {
+    "file": "asr-en.json",
+    "bytes": 308,
+    "sha256": "567058f5d95e6a5967f8bd2aeadb6270cf2a3d208fb397ee784790de0502cd32"
+  },
+  {
+    "file": "asr-en.onnx",
+    "bytes": 122397788,
+    "sha256": "7903180fda58b41ff8a5b74ca635ae08849e83b078c9a34a22dcabc1acd6d4a1"
+  },
+  {
+    "file": "asr-fi.json",
+    "bytes": 331,
+    "sha256": "c21a8860431128fe634415d48d52844f1d1f3f07271047219e975d4925962686"
+  },
+  {
+    "file": "asr-fi.onnx",
+    "bytes": 122399342,
+    "sha256": "c860695b3c3cd2d8dc76246bae7079aaecfb98b987eefa30b73f1a9ca6eed84f"
+  },
+  {
+    "file": "vad.onnx",
+    "bytes": 2327524,
+    "sha256": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3"
+  }
+]
