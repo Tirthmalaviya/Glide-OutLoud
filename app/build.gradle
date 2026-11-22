@@ -1,0 +1,32 @@
+plugins { id 'com.android.application' }
+android {
+ namespace 'fi.guildgame.app'
+ compileSdk 35
+ defaultConfig {
+  applicationId 'fi.guildgame.app'
+  minSdk 26
+  targetSdk 35
+  versionCode 5
+  versionName '1.0.1'
+  ndk { abiFilters 'arm64-v8a', 'x86_64' }
+ }
+ sourceSets { main { assets.srcDirs = ['src/main/assets', "$buildDir/generated/guildAssets"] } }
+ signingConfigs {
+  testBuild { storeFile file('../test-signing/test.keystore'); storePassword 'android'; keyAlias 'androiddebugkey'; keyPassword 'android' }
+ }
+ buildTypes {
+  debug { signingConfig signingConfigs.testBuild }
+  release { minifyEnabled false }
+ }
+ compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+ packaging { jniLibs { useLegacyPackaging = false } }
+}
+
+tasks.register('syncWebAssets', Sync) {
+ from('../web') { into('web') }
+ from('../licenses') { into('licenses') }
+ into(layout.buildDirectory.dir('generated/guildAssets'))
+}
+tasks.named('preBuild').configure { dependsOn('syncWebAssets') }
+
+dependencies { implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.23.2' }

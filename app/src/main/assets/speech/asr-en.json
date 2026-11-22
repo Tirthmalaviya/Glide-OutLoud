@@ -1,0 +1,1 @@
+{"tokens": ["<pad>", "<s>", "</s>", "<unk>", "|", "E", "T", "A", "O", "N", "I", "H", "S", "R", "D", "L", "U", "M", "W", "C", "F", "G", "Y", "P", "B", "V", "K", "'", "X", "J", "Q", "Z"], "blank": 0, "sampleRate": 16000, "sourceModel": "facebook/wav2vec2-base-960h", "normalise": true, "modelBytes": 122397788}

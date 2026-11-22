@@ -1,0 +1,1 @@
+{"tokens": ["|", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "ä", "å", "ö", "[UNK]", "[PAD]"], "blank": 31, "sampleRate": 16000, "sourceModel": "Finnish-NLP/wav2vec2-base-fi-voxpopuli-v2-finetuned", "normalise": true, "modelBytes": 122399342}
