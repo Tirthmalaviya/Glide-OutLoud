@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Glide Game: listen and find</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="screen find-screen">
+  <div class="topbar">
+    <a class="icon-btn" href="games.html" data-i18n-label="back" data-icon="back"></a>
+    <span class="practice-identity" id="practiceIdentity"></span><div class="dots" id="dots"></div>
+  </div>
+
+  <section class="card" style="display:flex;align-items:center;gap:16px">
+    <button class="round mic" id="hear" style="width:76px;height:76px" data-i18n-label="listenAgain" data-icon="speakerWhite"></button>
+    <div>
+      <b style="font-family:var(--font-display);font-size:22px;font-weight:600" data-i18n="tapPicture"></b>
+      <div class="muted small" id="words" hidden></div>
+    </div>
+  </section>
+
+  <div class="tiles" id="tiles"></div>
+  <div class="msg good" id="msg" aria-live="polite"></div>
+
+  <div class="adult">
+    <div class="adult-title" data-i18n="forAdult"></div>
+    <div class="row">
+      <button class="btn btn-ghost btn-small" id="show" data-i18n="showWords"></button>
+      <button class="btn btn-ghost btn-small" id="skip" style="flex:0 0 110px" data-i18n="skip"></button>
+    </div>
+  </div>
+</main>
+
+<script src="js/native.js"></script>
+<script src="js/app.js"></script>
+<script src="js/content.js"></script>
+<script src="js/practice.js"></script>
+<script src="js/api.js"></script>
+<script>
+GG.paint();
+const $ = id => document.getElementById(id);
+const level = GG.ageLevel(), TOTAL = GG.settings().rounds;
+const CHOICES = [2, 4, 6][level], STEPS = level === 2 ? 2 : 1;
+const pool = level === 0 ? GG.WORDS.filter(w => w.lv === 0) : GG.WORDS;
+const saved=Practice.draft('find',{id:Practice.uid(),results:[],stars:0,roundState:null});
+const results=saved.results;
+let round=results.length,stars=saved.stars,opts=[],targets=[],step=0,wrong=false,locked=false,prompt='',attempts=0,voiceToken=0,completed=false;
+let pendingRound=saved.roundState;
+let autoplayTimer=0;
+function checkpoint(){if(!completed)Practice.checkpoint('find',{id:saved.id,results,stars,roundState:{opts,targets,step,wrong,attempts,locked}});}
+Practice.banner();Practice.guard(()=>results.length>0||attempts>0,checkpoint);
+
+function show() {
+  const resume=pendingRound;pendingRound=null;
+  opts = resume?resume.opts:Practice.choose(pool,CHOICES,'find',results.flatMap(i=>(i.id||'').split('+')));
+  const targetIds=resume?resume.targets.map(i=>i.id):GG.shuffle(opts).slice(0,STEPS).map(i=>i.id);
+  targets=targetIds.map(id=>opts.find(i=>i.id===id));
+  step=resume?resume.step:0;wrong=resume?resume.wrong:false;attempts=resume?resume.attempts:0;locked=false;voiceToken++;
+  prompt = STEPS === 1
+    ? `${GG.t("find")} ${GG.shown(targets[0])}`
+    : `${GG.t("first")} ${GG.shown(targets[0])}, ${GG.t("then")} ${GG.shown(targets[1])}`;
+  GG.dots($("dots"), round, TOTAL);
+  $("words").textContent = prompt; $("words").hidden = true;
+  $("msg").textContent = "";
+  $("tiles").className = "tiles" + (CHOICES === 6 ? " six" : "");
+  $("tiles").innerHTML = "";
+  opts.forEach(o => {
+    const b = document.createElement("button");
+    b.className = "tile";if(targets.slice(0,step).includes(o))b.classList.add("yes");
+    b.textContent = o.pic;
+    b.setAttribute("aria-label", GG.shown(o));
+    b.onclick = () => pick(o, b);
+    $("tiles").appendChild(b);
+  });
+  if(resume&&resume.locked){locked=true;setTimeout(()=>finishRound(wrong?'wrong':'correct'),0);}else autoplayTimer=setTimeout(playPrompt,350);
+}
+function finishRound(result) {
+  results.push({ id:targets.map(i=>i.id).join("+"),target: targets.map(GG.shown).join(" + "), heard: "", tries: Math.max(1, attempts), result });
+  round++;
+  if (round >= TOTAL) {
+    completed=true;GG.finishSession({ id:saved.id,game: "find", lang: GG.data.lang, level, items: results, stars, total: TOTAL });
+    location.href = "reward.html";
+  } else {show();checkpoint();}
+}
+function pick(o, btn) {
+  if (locked) return;
+  if(targets.slice(0,step).includes(o))return;
+  attempts++;
+  if (o === targets[step]) {
+    btn.classList.add("yes");
+    step++;
+    if (step >= targets.length) {
+      locked = true; stars++;
+      $("msg").textContent = GG.t("found");
+      GG.dots($("dots"), round + 1, TOTAL);
+      setTimeout(() => finishRound(wrong ? "wrong" : "correct"), 1200);
+    }
+  } else {
+    wrong = true;
+    btn.classList.remove("no"); void btn.offsetWidth; btn.classList.add("no");
+    playPrompt();
+  }
+  checkpoint();
+}
+async function playPrompt() {
+  const token = ++voiceToken;
+  if(targets.length===1){await GG.speak(GG.shown(targets[0]));return;}
+  await GG.speak(`${GG.t('first')} ${GG.shown(targets[0])}`);
+  await new Promise(resolve=>setTimeout(resolve,450));
+  if(token===voiceToken&&!locked)await GG.speak(`${GG.t('then')} ${GG.shown(targets[1])}`);
+}
+window.addEventListener('pagehide', () => { voiceToken++;clearTimeout(autoplayTimer); });
+window.addEventListener('guild-paused', () => { voiceToken++;clearTimeout(autoplayTimer); });
+$("hear").onclick = playPrompt;
+$("show").onclick = () => { $("words").hidden = false; };
+$("skip").onclick = () => { if (!locked) { locked = true; finishRound("skip"); } };
+if(round>=TOTAL){completed=true;GG.finishSession({id:saved.id,game:'find',lang:GG.data.lang,level,items:results,stars,total:TOTAL});location.href='reward.html';}else show();
+</script>
+</body>
+</html>

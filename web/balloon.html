@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Glide Game: voice balloon</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="screen balloon-screen">
+  <div class="topbar">
+    <a class="icon-btn" href="games.html" data-i18n-label="back" data-icon="back"></a>
+    <span class="practice-identity" id="practiceIdentity"></span><div class="dots" id="dots"></div>
+  </div>
+
+  <div class="sky"><div class="hill"></div><div class="balloon" id="balloon"></div></div>
+
+  <div>
+    <div class="fill"><i id="fill"></i></div>
+    <div class="small muted" style="display:flex;justify-content:space-between;margin-top:6px;font-weight:800">
+      <span id="secs"></span><span id="level"></span>
+    </div>
+  </div>
+
+  <div class="msg" id="msg" aria-live="polite"></div>
+
+  <div class="card" style="display:flex;align-items:center;gap:12px;padding:12px 16px">
+    <span class="round mic" style="width:48px;height:48px;box-shadow:none" aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+    </span>
+    <div class="meter" id="meter" aria-hidden="true"></div>
+  </div>
+
+  <div class="row" style="flex-wrap:wrap">
+    <button class="btn btn-primary btn-small" id="startMic" data-i18n="micOn"></button>
+    <button class="btn btn-ghost btn-small" id="hold" style="touch-action:none;user-select:none" data-i18n="holdHere"></button>
+  </div>
+  <p class="small muted" id="note" style="text-align:center"></p>
+</main>
+
+<script src="js/native.js"></script>
+<script src="js/app.js"></script>
+<script src="js/content.js"></script>
+<script src="js/practice.js"></script>
+<script src="js/api.js"></script>
+<script>
+GG.paint();
+const $ = id => document.getElementById(id);
+const level = GG.ageLevel(), TOTAL = 3;
+const setting = GG.settings().hold;
+const NEED = setting === "auto" ? [2, 4, 6][level] : +setting;
+const COLORS = ["#1F5FBF", "#D6336C", "#1A7A43"];
+const saved=Practice.draft('balloon',{id:Practice.uid(),results:[]}),results=saved.results;
+let done=results.length,fill=0,resting=false,holdDown=false,last=0,completed=false;
+let micPhase='off',checkStarted=0,quietSamples=[],soundFrames=0,nativeThreshold=0.025;
+function checkpoint(){if(!completed)Practice.checkpoint('balloon',{id:saved.id,results});}
+Practice.banner();Practice.guard(()=>results.length>0||fill>0,checkpoint);
+let nativeRms = 0, assisted = false;
+let an = null, buf = null, stream = null, ctx = null, floor = 0.01, loud = 0;
+
+for (let i = 0; i < 10; i++) $("meter").appendChild(document.createElement("span"));
+const bars = [...$("meter").children];
+
+function newBalloon() {
+  fill = 0; resting = false; assisted = false;
+  const b = $("balloon");
+  b.classList.remove("fly");
+  b.style.background = COLORS[done % 3];
+  GG.dots($("dots"), done, TOTAL);
+}
+async function startMic() {
+  try {
+    if (GuildBridge.native) {
+      $('startMic').disabled = true;
+      await GuildBridge.call('meter');
+      $('startMic').hidden = true;micPhase='quiet';checkStarted=performance.now();quietSamples=[];
+      $('note').textContent = GG.data.lang === 'fi' ? 'Ääni mitataan vain laitteella.' : 'Sound level is measured on this device only.';
+      return;
+    }
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.resume) await ctx.resume();
+    an = ctx.createAnalyser(); an.fftSize = 1024;
+    ctx.createMediaStreamSource(stream).connect(an);
+    buf = new Float32Array(an.fftSize);
+    $("startMic").hidden = true;micPhase="quiet";checkStarted=performance.now();quietSamples=[];
+  } catch (e) { $("startMic").disabled = false; $("note").textContent = GG.t("noMic") + " " + e.message; }
+}
+function voiceLevel() {
+  if (GuildBridge.native) return nativeRms / nativeThreshold;
+  if (!an) return 0;
+  an.getFloatTimeDomainData(buf);
+  let sum = 0;
+  for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+  const rms = Math.sqrt(sum / buf.length);
+  floor = Math.min(rms, floor * 1.002 + 0.00001);   /* slowly learns the room noise */
+  return rms / Math.max(floor * 3.5, 0.025);         /* 1 or more = voice on */
+}
+function loop(ts) {
+  const dt = last ? Math.min((ts - last) / 1000, 0.05) : 0; last = ts;
+  if(holdDown)assisted=true;
+  const lv = holdDown ? 1.4 : voiceLevel();
+  loud += (lv - loud) * 0.3;
+  bars.forEach((b, i) => { b.style.height = Math.max(10, Math.min(100, loud * 60 - i * 3 + (i % 3) * 8)) + "%"; b.style.background = loud >= 1 ? "var(--green)" : "#9FD8B2"; });
+  if(!holdDown&&micPhase!=='ready'){
+    if(micPhase==='quiet'){
+      if(GuildBridge.native)quietSamples.push(nativeRms);
+      $('msg').textContent=Practice.text('Microphone check: stay quiet for a moment.','Mikrofonin tarkistus: ole hetki hiljaa.');
+      if(ts-checkStarted>1000){if(quietSamples.length)nativeThreshold=Math.max(0.025,quietSamples.reduce((a,b)=>a+b,0)/quietSamples.length*3.5);micPhase='sound';checkStarted=ts;}
+    }else if(micPhase==='sound'){
+      $('msg').textContent=Practice.text('Now say “aaaa” to check the microphone.','Sano nyt ”aaaa” ja testaa mikrofoni.');
+      soundFrames=lv>=1?soundFrames+1:0;if(soundFrames>=8){micPhase='ready';$('msg').dataset.t='';$('note').textContent=Practice.text('Microphone ready. Use a comfortable voice.','Mikrofoni valmis. Käytä mukavaa puheääntä.');}
+      else if(ts-checkStarted>6000)$('note').textContent=Practice.text('No clear sound yet. Move closer or use the assisted button.','Selkeää ääntä ei vielä kuulu. Siirry lähemmäs tai käytä apupainiketta.');
+    }else $('msg').textContent=Practice.text('Turn on the microphone, or hold the assisted button.','Käynnistä mikrofoni tai pidä apupainiketta painettuna.');
+    requestAnimationFrame(loop);return;
+  }
+  if (!resting) {
+    const on = lv >= 1;
+    fill = Math.max(0, Math.min(1, fill + (on ? dt / NEED : -dt * 0.2)));
+    $("balloon").style.transform = `scale(${(0.3 + fill * 0.7).toFixed(3)})`;
+    $("fill").style.width = (fill * 100).toFixed(1) + "%";
+    $("secs").textContent = `${(fill * NEED).toFixed(1)} / ${NEED} ${GG.t("seconds")}`;
+    $("level").textContent = on ? GG.t("justRight") : (loud > 0.4 ? GG.t("tooQuiet") : "");
+    const text = on ? GG.t("keepGoing") : GG.t("balloonSay");
+    if ($("msg").dataset.t !== text) { $("msg").dataset.t = text; $("msg").innerHTML = `<b>${GG.esc(text)}</b>`; }
+    if (fill >= 1) {
+      resting = true; done++;
+      results.push({ target: "aaaa", heard: "", tries: 1, result: "correct", assisted, seconds: NEED });
+      checkpoint();$("balloon").classList.add("fly");
+      $("msg").dataset.t = ""; $("msg").innerHTML = `<b>${GG.esc(Practice.text("Rest. Take a comfortable breath.","Lepää. Hengitä rauhallisesti."))}</b>`;
+      GG.dots($("dots"), done, TOTAL);
+      setTimeout(() => {
+        if (done >= TOTAL) {
+          stopAudio();
+          completed=true;GG.finishSession({ id:saved.id,game: "balloon", lang: GG.data.lang, level, items: results, stars: done, total: TOTAL });
+          location.href = "reward.html";
+        } else newBalloon();
+      }, 2200);
+    }
+  }
+  requestAnimationFrame(loop);
+}
+$("startMic").onclick = startMic;
+const hold = $("hold");
+hold.addEventListener("pointerdown", e => { holdDown = true; assisted = true;micPhase='ready';$('note').textContent=Practice.text('Assisted play: using the button.','Avustettu peli: käytetään painiketta.'); hold.setPointerCapture(e.pointerId); e.preventDefault(); });
+["pointerup", "pointercancel", "pointerleave"].forEach(ev => hold.addEventListener(ev, () => { holdDown = false; }));
+hold.addEventListener("contextmenu", e => e.preventDefault());
+function stopAudio() {
+  holdDown = false;micPhase='off';soundFrames=0;
+  if (stream) { stream.getTracks().forEach(tr => tr.stop()); stream = null; }
+  if (ctx) { ctx.close().catch(() => {}); ctx = null; }
+  an = null; nativeRms = 0; GuildBridge.stop();
+}
+window.addEventListener('guild-meter', e => { nativeRms = Number(e.detail) || 0; });
+window.addEventListener('guild-meter-error', () => { stopAudio(); $('startMic').hidden=false; $('startMic').disabled=false; $('note').textContent=GG.t('noMic'); });
+window.addEventListener('guild-paused', () => { stopAudio(); $('startMic').hidden=false; $('startMic').disabled=false; });
+window.addEventListener('pagehide', stopAudio);
+$('hold').textContent=Practice.text('Hold to help (assisted)','Pidä painettuna (avustettu)');
+if(done>=TOTAL){completed=true;GG.finishSession({id:saved.id,game:'balloon',lang:GG.data.lang,level,items:results,stars:done,total:TOTAL});location.href='reward.html';}else{newBalloon();requestAnimationFrame(loop);}
+</script>
+</body>
+</html>

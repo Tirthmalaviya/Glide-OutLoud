@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Glide Game</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="screen">
+  <div class="topbar">
+    <span class="grow"></span>
+    <button class="pill" data-lang="en">English</button>
+    <button class="pill" data-lang="fi">Suomi</button>
+  </div>
+
+  <div class="hero">
+    <div id="owl"></div>
+    <h1 data-i18n="appName">Glide Game</h1>
+    <p class="muted" data-i18n="tagline"></p>
+  </div>
+
+  <a class="card guild" href="games.html" style="text-decoration:none;color:inherit">
+    <div class="guild-crest" id="crest"></div>
+    <div style="flex:1">
+      <b id="playerName"></b>
+      <div class="small muted"><span data-i18n="guildLevel"></span>: <span id="levelName"></span></div>
+      <div class="xp-bar"><i id="xp"></i></div>
+    </div>
+  </a>
+
+  <section class="card welcome-plan"><h2 id="welcomePlanTitle"></h2><p id="welcomeSummary" class="muted"></p><p id="welcomeFocus" class="small muted"></p><a class="review-link" href="parent-gate.html" id="editPlayer"></a></section>
+
+  <a class="btn btn-primary btn-wide" href="games.html"><span data-i18n="letsPlay"></span><span data-icon="arrow"></span></a>
+
+  <a href="parent-gate.html" style="margin-top:auto;display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;font-weight:800;color:var(--ink)">
+    <span data-icon="lock"></span><span data-i18n="therapistArea"></span>
+  </a>
+</main>
+
+<script src="js/native.js"></script>
+<script src="js/app.js"></script>
+<script src="js/content.js"></script>
+<script src="js/practice.js"></script>
+<script>
+sessionStorage.removeItem('gg-adult');
+function render() {
+  const p = GG.player(), g = GG.guild(p.xp);
+  GG.paint();
+  document.getElementById("owl").innerHTML = GG.OWL;
+  document.getElementById("crest").textContent = g.crest;
+  document.getElementById("playerName").textContent = p.name;
+  document.getElementById("levelName").textContent = g.name;
+  document.getElementById("xp").style.width = g.pct + "%";
+  document.querySelectorAll("[data-lang]").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === GG.data.lang));
+  document.getElementById('welcomePlanTitle').textContent=Practice.text('Ready for practice','Valmiina harjoittelemaan');
+  document.getElementById('welcomeSummary').textContent=Practice.summary();
+  document.getElementById('welcomeFocus').textContent=`${p.age} ${GG.t('years')} · ${GG.t('level'+GG.ageLevel())}`;
+  document.getElementById('editPlayer').textContent=Practice.text('Change player or practice plan →','Vaihda pelaajaa tai suunnitelmaa →');
+  const lv = GG.ageLevel();
+  document.querySelectorAll("[data-age]").forEach(b => b.setAttribute("aria-pressed", GG.levelOfAge(+b.dataset.age) === lv));
+}
+document.querySelectorAll("[data-lang]").forEach(b => b.onclick = () => { GG.setLang(b.dataset.lang); render(); });
+document.querySelectorAll("[data-age]").forEach(b => b.onclick = () => { GG.player().age = +b.dataset.age; GG.save(); render(); });
+render();
+</script>
+</body>
+</html>

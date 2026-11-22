@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Glide Game: quests</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main class="screen quest-screen">
+  <div class="topbar">
+    <a class="icon-btn" href="index.html" data-i18n-label="back" data-icon="back"></a>
+    <span class="practice-identity" id="practiceIdentity"></span>
+    <span class="pill">⭐ <span id="xpTotal"></span> XP</span>
+  </div>
+
+  <div>
+    <h1 style="font-size:34px" data-i18n="pickGame"></h1>
+    <p class="muted" id="levelNote"></p><p class="small muted" id="planNote"></p>
+  </div>
+
+  <a class="game-card" href="say-word.html">
+    <span class="game-icon" style="background:#FFE3EC" data-icon="micSmall"></span>
+    <span><b data-i18n="g1"></b><span class="muted small" data-i18n="g1d"></span></span>
+  </a>
+  <a class="game-card" href="find-it.html">
+    <span class="game-icon" style="background:#DDF0FF" data-icon="ear"></span>
+    <span><b data-i18n="g2"></b><span class="muted small" data-i18n="g2d"></span></span>
+  </a>
+  <a class="game-card" href="balloon.html">
+    <span class="game-icon" style="background:var(--green-soft)" data-icon="balloon"></span>
+    <span><b data-i18n="g3"></b><span class="muted small" data-i18n="g3d"></span></span>
+  </a>
+
+  <section class="card" style="margin-top:auto">
+    <div class="guild">
+      <div class="guild-crest" id="crest"></div>
+      <div style="flex:1">
+        <b id="levelName" style="font-family:var(--font-display);font-size:20px"></b>
+        <div class="xp-bar"><i id="xp"></i></div>
+        <div class="small muted" id="toNext"></div>
+      </div>
+    </div>
+    <div class="small muted" style="margin-top:12px;font-weight:800" data-i18n="badges"></div>
+    <div class="badges" id="badges"></div>
+  </section>
+</main>
+
+<script src="js/native.js"></script>
+<script src="js/app.js"></script>
+<script src="js/content.js"></script>
+<script src="js/practice.js"></script>
+<script>
+sessionStorage.removeItem('gg-adult');
+GG.paint();
+Practice.banner();
+const p = GG.player(), g = GG.guild(p.xp), lang = GG.data.lang;
+document.getElementById("xpTotal").textContent = p.xp;
+document.getElementById("levelNote").textContent = `${Practice.language(lang)} · ${GG.t("level" + GG.ageLevel())}`;
+document.getElementById('planNote').textContent=GG.settings().targetSound?Practice.text(`Say the word focus: /${GG.settings().targetSound}/`,`Sano sana -äänne: /${GG.settings().targetSound}/`):Practice.text('A little practice, one quest at a time.','Harjoitellaan vähän kerrallaan.');
+const links={say:'say-word.html',find:'find-it.html',balloon:'balloon.html'};
+for(const [game,href] of Object.entries(links)){
+ const a=document.querySelector(`a[href="${href}"]`),mark=document.createElement('span');mark.className='quest-hint';
+ const resumed=GG.player().drafts[game];
+ const amount=document.createElement('span');amount.className='small muted quest-count';amount.textContent=`${game==='balloon'?3:game==='say'?Math.min(GG.settings().rounds,Practice.pool().length):GG.settings().rounds} ${Practice.text('activities','tehtävää')}`;a.querySelector('span:last-child').appendChild(amount);
+ mark.textContent=resumed?Practice.text('Continue saved quest','Jatka tallennettua tehtävää'):Practice.suggested()===game?Practice.text('Suggested for you','Ehdotus sinulle'):'';
+ if(mark.textContent)a.querySelector('span:last-child').appendChild(mark);
+ if(game==='say'&&!Practice.pool().length){a.removeAttribute('href');a.setAttribute('aria-disabled','true');mark.textContent=Practice.text('Ask an adult to update the practice focus','Pyydä aikuista muuttamaan äännevalintaa');}
+}
+document.getElementById("crest").textContent = g.crest;
+document.getElementById("levelName").textContent = g.name;
+document.getElementById("xp").style.width = g.pct + "%";
+document.getElementById("toNext").textContent = g.toNext ? `${g.toNext} ${GG.t("xpToNext")}` : GG.t("maxLevel");
+document.getElementById("badges").innerHTML = GG.BADGES.map(b =>
+  p.badges.includes(b.id)
+    ? `<span class="badge" title="${GG.esc(b[lang])}" aria-label="${GG.esc(b[lang])}">${b.icon}</span>`
+    : `<span class="badge empty" aria-hidden="true"></span>`).join("");
+</script>
+</body>
+</html>

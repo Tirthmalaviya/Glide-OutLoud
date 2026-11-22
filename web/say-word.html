@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Glide Game: say the word</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="screen speech-screen">
+  <div class="topbar">
+    <a class="icon-btn" href="games.html" data-i18n-label="back" data-icon="back"></a>
+    <span class="practice-identity" id="practiceIdentity"></span><div class="dots" id="dots"></div>
+  </div>
+
+  <p class="speech-state" id="speechState" role="status"></p><section class="card stage">
+    <div class="pic" id="pic"></div>
+    <div class="word" id="word"></div>
+  </section>
+
+  <div class="actions">
+    <div class="action-control">
+      <button
+        class="round"
+        id="hear"
+        data-i18n-label="hear"
+        data-icon="speaker">
+      </button>
+      <span class="action-label" id="hearLabel"></span>
+    </div>
+  
+    <div class="action-control">
+      <button
+        class="round mic"
+        id="mic"
+        data-i18n-label="listening"
+        data-icon="mic">
+      </button>
+      <span class="action-label" id="micLabel"></span>
+    </div>
+  </div>
+  
+  <div class="msg" id="msg" aria-live="polite"></div>
+  
+  <span class="mode" id="mode"></span>
+  
+  <details class="adult adult-help" id="adultHelp"><summary data-i18n="forAdult"></summary>
+    <div class="adult-title" data-i18n="forAdult"></div>
+  
+    <div class="row">
+      <button class="btn btn-ok btn-small" id="ok">
+        <span data-icon="check"></span>
+        <span data-i18n="saidRight"></span>
+      </button>
+  
+      <button
+        class="btn btn-ghost btn-small"
+        id="skip"
+        style="flex: 0 0 110px"
+        data-i18n="skip">
+      </button>
+    </div>
+  </details>
+</main>
+
+<script src="js/native.js"></script>
+<script src="js/app.js"></script>
+<script src="js/content.js"></script>
+<script src="js/practice.js"></script>
+<script src="js/api.js"></script>
+<script>
+GG.paint();
+document.getElementById("hearLabel").textContent =
+  GG.data.lang === "fi" ? "Kuuntele" : "Listen";
+
+document.getElementById("micLabel").textContent =
+  GG.data.lang === "fi" ? "Puhu" : "Speak";
+const $ = id => document.getElementById(id);
+const level = GG.ageLevel(), TOTAL = GG.settings().rounds, SECONDS = level === 2 ? 6 : 4;
+const initialItems=Practice.choose(Practice.pool(),TOTAL,'say');
+const saved=Practice.draft('say',{id:Practice.uid(),items:initialItems,results:[],tries:0,stars:0});
+const items=saved.items, results=saved.results;
+let idx=results.length, tries=saved.tries||0, stars=saved.stars||0, busy=false, locked=false, mode='adult', recordingNow=false, completed=false;
+function checkpoint(){if(!completed)Practice.checkpoint('say',{id:saved.id,items,results,tries:locked?0:tries,stars});}
+function state(key){const names={ready:Practice.text('Ready to speak','Valmis puhumaan'),preparing:GG.t('preparing'),listening:Practice.text('Listening','Kuuntelen'),checking:GG.t('checking'),feedback:Practice.text('Your turn','Sinun vuorosi')};$('speechState').textContent=names[key]||key;$('speechState').dataset.state=key;}
+Practice.banner();Practice.guard(()=>results.length>0||tries>0,checkpoint);
+function setMsg(main, sub, good) {
+  $("msg").className = "msg" + (good ? " good" : "");
+  $("msg").innerHTML = `<b>${GG.esc(main)}</b>${sub ? `<span class="muted">${GG.esc(sub)}</span>` : ""}`;
+}
+function showMode() {
+  const m = $("mode");
+  $('adultHelp').open = mode==='adult';
+  m.textContent = GG.t(mode === "local" ? "modeLocal" : mode === "browser" ? "modeBrowser" : "modeAdult");
+  m.className = "mode" + (mode === "local" ? "" : " warn");
+  $("mic").closest(".action-control").hidden =
+  mode === "adult";
+}
+function show() {
+  if(!items.length){$('word').textContent=Practice.text('No items match this focus.','Tälle äänteelle ei ole tehtäviä.');setMsg(Practice.text('Ask an adult to choose another focus.','Pyydä aikuista valitsemaan toinen äänne.'));['mic','hear','ok','skip'].forEach(id=>$(id).disabled=true);return;}
+  const it = items[idx];
+  locked = false;state('ready');
+  ['mic','hear','ok','skip'].forEach(id => $(id).disabled = false);
+  GG.dots($("dots"), idx, items.length);
+  $("pic").textContent = it.pic;
+  $("pic").className = "pic" + (level === 2 ? " sm" : "");
+  $("word").textContent = GG.shown(it);
+  setMsg(mode === "adult" ? "" : GG.t(level === 2 ? "tapMicSent" : "tapMic"));
+}
+function next() {
+  idx++;
+  if (idx >= items.length) {
+    completed=true;GG.finishSession({ id:saved.id, game: "say", lang: GG.data.lang, level, items: results, stars, total: items.length });
+    location.href = "reward.html";
+  } else {tries=0;show();checkpoint();}
+}
+function success(result, heard) {
+  if (locked) return;
+  locked = true; stars++;
+  results.push({ id:items[idx].id,target: GG.shown(items[idx]), heard: heard || "", tries: Math.max(tries, 1), result });
+  $("pic").classList.remove("pop"); void $("pic").offsetWidth; $("pic").classList.add("pop");
+  setMsg(GG.t("great"), heard ? `${GG.t("heard")}: “${heard}”` : "", true);
+  GG.dots($("dots"), idx + 1, items.length);
+  state('feedback');checkpoint();setTimeout(next, 1400);
+}
+
+$("hear").onclick = () => GG.speak(GG.shown(items[idx]));
+$("ok").onclick = () => { if (!busy) success("adult", ""); };
+$("skip").onclick = () => {
+  if (busy || locked) return;
+  locked = true;
+  results.push({ id:items[idx].id,target: GG.shown(items[idx]), heard: "", tries, result: "skip" });
+  checkpoint();next();
+};
+$("mic").onclick = async () => {
+  if(busy && recordingNow){recordingNow=false;$('mic').disabled=true;GuildBridge.call('finishSpeech').catch(()=>{});return;}
+  if (busy || locked) return;
+  busy = true;recordingNow=false;
+  await GG.stopSpeaking();
+  ['mic', 'hear', 'ok', 'skip'].forEach(id => $(id).disabled = true);
+  const attemptIndex = idx;
+  const it = items[idx];
+  const accepted = typeof it[GG.data.lang] === "string" ? [it[GG.data.lang]] : it[GG.data.lang];
+  state('preparing');setMsg(GG.t("preparing"));
+  try {
+    const res = await API.checkSpeech(accepted, SECONDS, () => { recordingNow=false;$('mic').disabled=true;$("mic").classList.remove("on"); state('checking');$('micLabel').textContent=Practice.text('Speak','Puhu');setMsg(GG.t("checking")); },
+      () => { recordingNow=true;$('mic').disabled=false;$('mic').classList.add('on');$('mic').setAttribute('aria-label',GG.t('finishMic'));state('listening');$('micLabel').textContent=GG.t('finishMic');setMsg(GG.t('listening')); });
+    if (attemptIndex !== idx || locked) return;
+    const heard = res.heard[0] || "";
+    const correct = typeof res.correct === "boolean" ? res.correct : GG.matches(it, res.heard);
+    tries++;
+    if (correct) success("heard", heard);
+    else if (tries >= 3) {
+      locked = true;
+      results.push({id:it.id,target: GG.shown(it), heard, tries, result:'helped'});
+      setMsg(GG.data.lang === 'fi' ? 'Hyvä yritys! Harjoitellaan tätä myöhemmin.' : "Good effort! We can practise this again later.");
+      GG.speak(GG.shown(it));
+      checkpoint();setTimeout(next, 2600);
+    }
+    else {state('feedback');$('micLabel').textContent=Practice.text('Try again','Yritä uudelleen');setMsg(GG.t("tryAgain"), heard ? `${GG.t("heard")}: “${heard}”` : "");checkpoint();}
+  } catch (e) {
+    state('ready');$('micLabel').textContent=Practice.text('Speak','Puhu');
+    /* microphone blocked or recognition not available: the grown-up checks instead */
+    setMsg(GG.data.lang === 'fi' ? 'Mikrofoni ei ole valmis.' : 'Speech check unavailable.', e.message || 'Please try again.');
+  } finally {
+    $("mic").classList.remove("on");
+    busy = false;recordingNow=false;$("mic").setAttribute("aria-label",GG.t("tapMic"));
+    ['mic','hear','ok','skip'].forEach(id => $(id).disabled = locked);
+
+  }
+};
+
+window.addEventListener('guild-paused', () => {
+  GuildBridge.stop();
+});
+API.speechMode().then(m => {mode=m;showMode();if(items.length&&idx>=items.length)next();else show();});
+</script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Glide Game: quest complete</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="screen" style="padding-top:36px">
+  <div class="stage">
+    <h1 style="font-size:40px;font-weight:700" data-i18n="done"></h1>
+    <div class="stars" id="stars"></div>
+  </div>
+
+  <section class="card stage" id="prize"></section>
+
+  <a class="btn btn-primary btn-wide" id="nextQuest"></a>
+  <div class="row">
+    <a class="btn btn-ghost" id="again" data-i18n="playAgain"></a>
+    <a class="btn btn-ghost" href="games.html" data-i18n="allGames"></a>
+  </div>
+
+  <div class="adult">
+    <div class="adult-title" data-i18n="forAdult"></div>
+    <div class="stat-grid" id="stats"></div>
+  </div>
+</main>
+
+<script src="js/native.js"></script>
+<script src="js/app.js"></script>
+<script src="js/content.js"></script>
+<script src="js/practice.js"></script>
+<script>
+GG.TEXT.en.heardByGame='Recognizer matched';GG.TEXT.fi.heardByGame='Puheentunnistuksen vastaavuus';GG.paint();
+const $ = id => document.getElementById(id);
+let last = null;
+try { last = JSON.parse(sessionStorage.getItem("gg-last") || "null"); } catch (e) { last = null; }
+if (!last) location.replace("games.html");
+else {
+  $('nextQuest').textContent=Practice.text('Next quest →','Seuraava tehtävä →');$('nextQuest').href={say:'say-word.html',find:'find-it.html',balloon:'balloon.html'}[Practice.suggested()];
+  const s = last.session, lang = GG.data.lang, p = GG.player(), g = GG.guild(p.xp);
+  document.querySelector('h1').textContent=Practice.text('Practice complete!','Harjoitus valmis!');
+  const effort=document.createElement('p');effort.className='small muted';effort.textContent=Practice.text('Thanks for practising. Every attempt counts.','Kiitos harjoittelusta. Jokainen yritys on tärkeä.');$('stars').after(effort);
+  $("stars").innerHTML = Array.from({ length: s.total }, (_, i) => `<span class="${i < s.stars ? "" : "off"}">⭐</span>`).join("");
+  $("stars").setAttribute("aria-label", `${s.stars} / ${s.total}`);
+  $("again").href = { say: "say-word.html", find: "find-it.html", balloon: "balloon.html" }[s.game];
+
+  let html = `<div class="small" style="font-weight:800;color:var(--berry)">+${last.xp} ${GG.esc(GG.t("xpGained"))}</div>`;
+  if (last.earned.length) {
+    const b = GG.BADGES.find(x => x.id === last.earned[0]);
+    html += `<div class="pic pop">${b.icon}</div><div class="word" style="font-size:26px">${GG.esc(GG.t("newBadge"))}: ${GG.esc(b[lang])}</div>`;
+  } else {
+    html += `<div class="pic">${g.crest}</div>`;
+  }
+  html += `<div class="muted">${GG.esc(last.levelUp ? GG.t("levelUp") + " " : "")}${GG.esc(GG.t("guildLevel"))}: <b>${GG.esc(g.name)}</b></div>
+           <div class="xp-bar" style="width:100%"><i style="width:${g.pct}%"></i></div>`;
+  $("prize").innerHTML = html;
+
+  const count = r => s.items.filter(i => i.result === r).length;
+  const tiles = s.game === "say"
+    ? [[count("heard"), "heardByGame", "var(--green)"], [count("adult"), "markedAdult", "var(--blue)"], [count("skip"), "skipped", "var(--soft)"]]
+    : s.game === "find"
+    ? [[count("correct"), "firstTap", "var(--green)"], [count("wrong"), "r_wrong", "var(--blue)"], [count("skip"), "skipped", "var(--soft)"]]
+    : [[s.stars, "balloons", "var(--green)"], [s.items[0] ? s.items[0].seconds + " s" : "-", "holdTime", "var(--blue)"], [last.xp, "xpGained", "var(--soft)"]];
+  const extra = s.game === "say" && count("helped") ? `${GG.t('r_helped')}: ${count('helped')}` : s.game === 'balloon' && s.items.some(i => i.assisted) ? `${GG.t('r_assisted')}: ${s.items.filter(i => i.assisted).length}` : '';
+  if (extra) { const note = document.createElement('p'); note.className = 'small muted'; note.style.textAlign = 'center'; note.textContent = extra; $('stats').parentNode.appendChild(note); }
+  $("stats").innerHTML = tiles.map(([v, k, c]) => `<div class="stat-mini"><b style="color:${c}">${GG.esc(v)}</b><span>${GG.esc(GG.t(k))}</span></div>`).join("");
+}
+</script>
+</body>
+</html>
